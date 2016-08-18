@@ -48,8 +48,8 @@ import urllib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-fromaddr = “your@account.com"    # Add email sender account here
-toaddr = “someone@email.com”          # Add email recipient here
+fromaddr = "your@account.com"    # Add email sender account here
+toaddr = "someone@email.com"          # Add email recipient here
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
@@ -106,7 +106,7 @@ def Mail_Message(Message):      # Mail sender function
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(“yourlogin”,”password or code“)
+        server.login("yourlogin","password or code")
         r = server.sendmail(fromaddr, toaddr, Message)
         server.close()
         return(r)
