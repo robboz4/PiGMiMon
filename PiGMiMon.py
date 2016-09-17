@@ -200,12 +200,10 @@ def Mail_Message(Message):      # Mail sender function
         server.ehlo()
         server.starttls()
         server.ehlo()
-<<<<<<< HEAD
+
         lhs, rhs = fromaddr.split("@")
         server.login(lhs, a_pass)
-=======
-        server.login("yourlogin","password or code")
->>>>>>> origin/master
+
         r = server.sendmail(fromaddr, toaddr, Message)
         server.close()
         return(r)
