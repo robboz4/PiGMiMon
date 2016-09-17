@@ -49,8 +49,11 @@ import xml.etree.ElementTree as ET   # For xml parsing
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-fromaddr = "clubrobbo@gmail.com"    # Add email sender account here
-toaddr = "robboz4@att.net"          # Add email recipient here
+# Add email recipient here
+
+fromaddr = "your@account.com"    # Add email sender account here
+toaddr = "someone@account.com"          # Add email recipient here
+>>>>>>> origin/master
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
@@ -197,8 +200,12 @@ def Mail_Message(Message):      # Mail sender function
         server.ehlo()
         server.starttls()
         server.ehlo()
+<<<<<<< HEAD
         lhs, rhs = fromaddr.split("@")
         server.login(lhs, a_pass)
+=======
+        server.login("yourlogin","password or code")
+>>>>>>> origin/master
         r = server.sendmail(fromaddr, toaddr, Message)
         server.close()
         return(r)
