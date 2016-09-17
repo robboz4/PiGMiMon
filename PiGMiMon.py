@@ -27,10 +27,10 @@
 #       set flag "that we know" True
 #   sleep
 
-# The active /passive mode and logging is tied into the PiGMi website 8/6/16
+# The active/passive mode and logging is tied into the PiGMi website 8/6/16
 # Some code straightening  and comment removal needed before putting into github
-# Added email function to open/close connection rather than leaving it active 8/16/16
-
+# Added email function to open/close connetcion rather than leaving it active 8/16/16
+# Added config() to read email and pin settings from the web server config. 9/14/16
 
 
 import requests
@@ -38,8 +38,9 @@ import time
 import RPi.GPIO as io
 import os
 import sys
-import smtplib
-import urllib
+import smtplib                       # Email  
+import urllib                        # Email sending
+import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
 
@@ -48,8 +49,8 @@ import urllib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-fromaddr = “your@account.com"    # Add email sender account here
-toaddr = “someone@email.com”          # Add email recipient here
+fromaddr = "clubrobbo@gmail.com"    # Add email sender account here
+toaddr = "robboz4@att.net"          # Add email recipient here
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
@@ -57,24 +58,25 @@ msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 
 body = "Garage Door Alarm!  "       # This is over written
 msg.attach(MIMEText(body, 'plain'))
+a_pass = ""                         # Need pass code for login account
 
 
 
-
-message = 'A Garage Door has changed state! Check page, email or logfile for more information. '
-number = ‘55555555555’              # Add your phone number here
+message = 'A Garage Door has changed state! Check page, email or logfile for more information. http://108.192.173.101:86/PiGMi'
+number = '4088583305'              # Add your phone number here
 
 
 payload = {'number': number, 'message': message}
 
-
+No_Email = True
+No_SMS = True
 
 io.setmode(io.BCM)
  
 
-door1_pin = 24    # Reed switch input. Must match the PiGMi pin numbers!!!
-door2_pin = 23    # Set up for my 3 garage doors
-door3_pin = 25    # Comment out for fewer doors.
+door1_pin = 00    # Reed switch input. Must match the PiGMi pin numbers!!!
+door2_pin = 00    # Set up for my 3 garage doors
+door3_pin = 00    # Comment out for fewer doors.
 door1_status_cur = 1
 door2_status_cur = 1
 door3_status_cur = 1
@@ -86,12 +88,7 @@ Door1 = "Closed"  #Assuming default state for doors.
 Door2 = "Closed"
 Door3 = "Closed" 
 
-io.setup(door1_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-io.setup(door2_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-io.setup(door3_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-door1_status_old = io.input(door1_pin)
-door2_status_old = io.input(door2_pin)
-door3_status_old = io.input(door3_pin)
+
 
 
 
@@ -100,13 +97,108 @@ Log_update_tick = 0
 Armed = False
 Armed_text = ""
 
+def Config():		# read Config data from XML file of PiGMi
+
+
+        tree = ET.parse("/var/www/PiGMi/config/garage.xml" )
+        root = tree.getroot()
+        Door_list = [] # List of doors and pins.
+
+#       Using lots of  globals
+        global number
+        global toaddr
+        global fromaddr
+        global a_pass
+        global door1_pin
+        global door2_pin
+        global door3_pin
+        global No_Email
+        global No_SMS
+
+        MyLog("Reading Configuration.")
+
+        for monitor in root.findall("monitor"):
+               email = monitor.find("monitor-email").text
+               if email is None:
+                     email = ""
+                     MyLog("No recipient Email Address configured.")
+                     No_Email = True
+               else:
+                     toaddr = email
+                     account_info = "Sending email to " + toaddr
+                     MyLog(account_info)
+                     No_Email = False
+
+               sms = monitor.find("monitor-sms").text
+               if sms is None:
+                     sms = ""
+                     MyLog("No SMS Number configured.")
+                     No_SMS = True
+               else:
+		     number = sms
+                     sms_info = "SMS number is " + number
+                     MyLog(sms_info)
+                     No_SMS = False
+
+
+               account = monitor.find("email-from-account").text
+               if account is None:
+                     account = ""
+                     MyLog("No Email Sender User account.")
+                     No_Email = True
+               else:
+                     lhs, rhs  = account.split("@")
+                     fromaddr = account
+                     account_info = "Using account " + lhs + " at " + rhs
+                     MyLog(account_info)
+                     No_Email = False
+
+               apass = monitor.find("email-from-passwd").text
+
+               if apass  is None :
+                     apass = ""
+                     MyLog("No Email Password.")
+                     No_Email = True
+               else: 
+                    a_pass = apass
+                    account_info = "Using passcode " + a_pass
+                    MyLog(account_info)
+                    No_EMail = False
+
+               for door in root.findall("door"):
+                     doorname  = door.find("name").text
+                     if doorname is None :
+                               doorname = "No door installed"
+                     PinR = door.find("gpio-pinR").text
+                     PinM = door.find("gpio-pinM").text
+
+
+                     Door_list.append(doorname)
+                     Door_list.append(PinR)
+                     Door_list.append(PinM)
+# extract magnetic swicth config. There are a maximum of 9 entries (0-8)
+# Door_name, relay_pin, magnet_pin. We need 3rd, 6th and 9th entired of the
+#list. Door_list[2],Door_list[5], Door_list [8]...
+        door1_pin = int(Door_list[2])
+
+        door2_pin = int(Door_list[5])    
+
+        door3_pin = int(Door_list[8])    
+
+# End of configuration for magnetic switch pins, email accounts and addresses and SMS.
+
+
 
 def Mail_Message(Message):      # Mail sender function 
-	server = smtplib.SMTP('smtp.gmail.com', 587)
+	
+        global fromaddr
+        global a_pass
+        server = smtplib.SMTP('smtp.gmail.com', 587)
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(“yourlogin”,”password or code“)
+        lhs, rhs = fromaddr.split("@")
+        server.login(lhs, a_pass)
         r = server.sendmail(fromaddr, toaddr, Message)
         server.close()
         return(r)
@@ -140,7 +232,7 @@ def MyLog(logData):                       # New Logging  function
                                           # URL will need customizing for port number and web location
           log_args = { 'msg' : logData }
           encoded_args = urllib.urlencode(log_args)
-          url = "http://localhost:xx/PiGMi/logm.php?" + encoded_args
+          url = "http://localhost:86/PiGMi/logm.php?" + encoded_args
 
           url_junk = urllib.urlopen(url)
 
@@ -200,34 +292,44 @@ def Door_Status():                       # Get Door status routine,
 
 Get_Mode()
 HeaderText = "Monitor  started." 
-
 MyLog(HeaderText)
+Config()
+
+io.setup(door1_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+io.setup(door2_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+io.setup(door3_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+door1_status_old = io.input(door1_pin)
+door2_status_old = io.input(door2_pin)
+door3_status_old = io.input(door3_pin)
+
+
+
 MyLog(Armed_text)
 
 if (io.input(door1_pin) == 1):
 	Door1 = "Open"
-        Initial_state = "Door 1 is " + Door1
+        Initial_state = "Door 1 is " + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
 else:	
-        Initial_state = "Door 1 is " + Door1
+        Initial_state = "Door 1 is " + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
 
 if (io.input(door2_pin) == 1):
         Door2 = "Open"
-        Initial_state = "Door 2 is " + Door2
+        Initial_state = "Door 2 is " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
 
 else:
-        Initial_state = "Door 2 is " + Door2
+        Initial_state = "Door 2 is " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
 
 if (io.input(door3_pin) == 1):
         Door3 = "Open"
-        Initial_state = "Door 3 is " + Door3
+        Initial_state = "Door 3 is " + Door3 + " Monitoring Pin: " + str(door3_pin)
         MyLog(Initial_state)
 
 else:
-        Initial_state = "Door 3 is " + Door
+        Initial_state = "Door 3 is " + Door3 + + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
 
 
@@ -243,15 +345,22 @@ while True:
     if Door_alarm == True:
         print("Alarm True")
         if Armed == True:
-            print("DOOR ALARM! Sending email alert")
-            msg.attach(MIMEText(body, 'plain'))
-            text = msg.as_string()+ time.asctime( time.localtime(time.time()) ) + "\n"
-            r = Mail_Message(text)
-            MyLog("Monitor sending email: Status below.")
-            MyLog(r)
-            MyLog("Monitor is sending SMS: Status below.")
-            r = requests.post("http://textbelt.com/text", data=payload)
-            MyLog(r.text)
+            if No_Email == False:
+               print("DOOR ALARM! Sending email alert")
+               msg.attach(MIMEText(body, 'plain'))
+               text = msg.as_string()+ time.asctime( time.localtime(time.time()) ) + "\n"
+               r = Mail_Message(text)
+               MyLog("Monitor sending email: Status below.")
+               MyLog(r)
+            else:
+               MyLog("Email not  configured, cannot send message.")
+
+            if No_SMS == False:
+               MyLog("Monitor is sending SMS: Status below.")
+               r = requests.post("http://textbelt.com/text", data=payload)
+               MyLog(r.text)
+            else:
+               MyLog("SMS not configured, cannot send message.")
             Door_Alarm = False  # Cancel alarm  so we don't send every minute)
         else:
             MyLog("In Passive mode no message sent.")
