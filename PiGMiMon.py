@@ -31,7 +31,9 @@
 # Some code straightening  and comment removal needed before putting into github
 # Added email function to open/close connetcion rather than leaving it active 8/16/16
 # Added config() to read email and pin settings from the web server config. 9/14/16
-
+# Chnaged Mail_Message to use the Google email for both email and SMS. Chnaged config
+# routing so that email must be configured properly for both sms and email. However,
+# email only canbe sent with sms. 9/22/16
 
 import requests
 import time
@@ -49,27 +51,21 @@ import xml.etree.ElementTree as ET   # For xml parsing
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-# Add email recipient here
-
-fromaddr = "your@account.com"    # Add email sender account here
-toaddr = "someone@account.com"          # Add email recipient here
->>>>>>> origin/master
+fromaddr = "clubrobbo@gmail.com"    # Add email sender account here
+toaddr = "robboz4@att.net"          # Add email recipient here
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
 msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 
-body = "Garage Door Alarm!  "       # This is over written
+body = "Garage Door Alarm!   "       # This is over written
 msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 
 
 
-message = 'A Garage Door has changed state! Check page, email or logfile for more information. http://108.192.173.101:86/PiGMi'
-number = '4088583305'              # Add your phone number here
+message = "A Garage Door has changed state! Check page, email or logfile for more information. http://108.192.173.101:86/PiGMi \n for access.\n"
 
-
-payload = {'number': number, 'message': message}
 
 No_Email = True
 No_SMS = True
@@ -179,7 +175,7 @@ def Config():		# read Config data from XML file of PiGMi
                      Door_list.append(doorname)
                      Door_list.append(PinR)
                      Door_list.append(PinM)
-# extract magnetic swicth config. There are a maximum of 9 entries (0-8)
+# extract magnetic switch config. There are a maximum of 9 entries (0-8)
 # Door_name, relay_pin, magnet_pin. We need 3rd, 6th and 9th entired of the
 #list. Door_list[2],Door_list[5], Door_list [8]...
         door1_pin = int(Door_list[2])
@@ -192,23 +188,32 @@ def Config():		# read Config data from XML file of PiGMi
 
 
 
-def Mail_Message(Message):      # Mail sender function 
+def Mail_Message(Message, Method):      # Mail sender function 
 	
         global fromaddr
         global a_pass
+        global toaddr
+        global number
+
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.ehlo()
         server.starttls()
         server.ehlo()
-
         lhs, rhs = fromaddr.split("@")
+#        print lhs, a_pass, fromaddr
         server.login(lhs, a_pass)
-
-        r = server.sendmail(fromaddr, toaddr, Message)
+        print Message
+        body = Message
+        msg.attach(MIMEText(body, 'plain'))
+        text = msg.as_string()
+        if Method == "sms":
+           toaddr = number + "@text.att.net"
+#           print toaddr
+        r = server.sendmail(fromaddr, toaddr, text)
         server.close()
         return(r)
 
-# End of Mail_Message() fucntion
+# End of Mail_Message() function
 
 def Get_Mode():                  # Getting Mode setting
 
@@ -240,6 +245,7 @@ def MyLog(logData):                       # New Logging  function
           url = "http://localhost:86/PiGMi/logm.php?" + encoded_args
 
           url_junk = urllib.urlopen(url)
+          
 
 # End of My_Log() function
         
@@ -270,7 +276,8 @@ def Door_Status():                       # Get Door status routine,
 			
 			door1_status_old = door1_status_cur
 
-                        body = "Door 1 is active."
+                        body = " Door 1 is active. "
+                        msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
 			
@@ -278,7 +285,8 @@ def Door_Status():                       # Get Door status routine,
 			
                         print("Alarm Door 2 cur = " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
 			door2_status_old = door2_status_cur
-                        body = "Door 2 is active."
+                        body = " Door 2 is active. " 
+                        msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
                         return(True)
 
@@ -286,7 +294,8 @@ def Door_Status():                       # Get Door status routine,
 		if door3_status_cur != door3_status_old:
 			
 			door3_status_old = door3_status_cur
-                        body = "Door 3 is active."
+                        body = " Door 3 is active. "
+                        msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
 		return(False)	
@@ -351,22 +360,23 @@ while True:
         print("Alarm True")
         if Armed == True:
             if No_Email == False:
+               method = "email"
                print("DOOR ALARM! Sending email alert")
-               msg.attach(MIMEText(body, 'plain'))
-               text = msg.as_string()+ time.asctime( time.localtime(time.time()) ) + "\n"
-               r = Mail_Message(text)
+               text = " Alarm at " + time.asctime( time.localtime(time.time()) ) + "..."
+               r = Mail_Message(text, method)
                MyLog("Monitor sending email: Status below.")
                MyLog(r)
+               
             else:
-               MyLog("Email not  configured, cannot send message.")
-
+               MyLog("Email not configured, cannot send message.")
             if No_SMS == False:
-               MyLog("Monitor is sending SMS: Status below.")
-               r = requests.post("http://textbelt.com/text", data=payload)
-               MyLog(r.text)
+               if No_Email == False:
+                  method = "sms"
+                  r = Mail_Message(message, method)
+                  MyLog("Monitor is sending SMS: Status below.")
+                  MyLog(r)
             else:
-               MyLog("SMS not configured, cannot send message.")
-            Door_Alarm = False  # Cancel alarm  so we don't send every minute)
+               MyLog("SMS or Email not configured, cannot send SMS message.")
         else:
             MyLog("In Passive mode no message sent.")
         Door_alarm = False
