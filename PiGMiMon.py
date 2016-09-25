@@ -63,8 +63,8 @@ msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 
 
-
-message = "A Garage Door has changed state! Check page, email or logfile for more information. http://108.192.173.101:86/PiGMi \n for access.\n"
+#SMS message to customize. I added my external IP address.
+message = "A Garage Door has changed state! Check page, email or logfile for more information. "
 
 
 No_Email = True
