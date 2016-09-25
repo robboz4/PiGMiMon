@@ -31,9 +31,9 @@
 # Some code straightening  and comment removal needed before putting into github
 # Added email function to open/close connetcion rather than leaving it active 8/16/16
 # Added config() to read email and pin settings from the web server config. 9/14/16
-# Chnaged Mail_Message to use the Google email for both email and SMS. Chnaged config
+# Chnaged Mail_Message to use the Google email for both email and SMS. Changed config
 # routing so that email must be configured properly for both sms and email. However,
-# email only canbe sent with sms. 9/22/16
+# email only can be sent with sms. 9/22/16
 
 import requests
 import time
@@ -51,8 +51,8 @@ import xml.etree.ElementTree as ET   # For xml parsing
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-fromaddr = "clubrobbo@gmail.com"    # Add email sender account here
-toaddr = "robboz4@att.net"          # Add email recipient here
+fromaddr = ""    # Filled in from PiGMi config data
+toaddr = ""      # Filled in from PiGMi config data
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
@@ -73,9 +73,9 @@ No_SMS = True
 io.setmode(io.BCM)
  
 
-door1_pin = 00    # Reed switch input. Must match the PiGMi pin numbers!!!
-door2_pin = 00    # Set up for my 3 garage doors
-door3_pin = 00    # Comment out for fewer doors.
+door1_pin = 0    # Reed switch input. Must match the PiGMi pin numbers!!!
+door2_pin = 0    # Set up for my 3 garage doors
+door3_pin = 0    # Comment out for fewer doors.
 door1_status_cur = 1
 door2_status_cur = 1
 door3_status_cur = 1
