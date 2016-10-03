@@ -34,8 +34,10 @@
 # Changed Mail_Message to use the Google email for both email and SMS. Changed config
 # routing so that email must be configured properly for both sms and email. However,
 # email only can be sent with sms. 9/22/16
-
-
+# Integrating new config data from My-Garage. The setting of mode is now done through the 
+# config file, so no extra file is needed. Also streamlined door*_name for ease of reporting.
+# Tested on a Pi Zero that did not have any hardware connected to the GPIO pins. 9/26/16
+# Made cleaner variables for config changes 2/10/16
 import requests
 import time
 import RPi.GPIO as io
@@ -52,9 +54,8 @@ import xml.etree.ElementTree as ET   # For xml parsing
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
-fromaddr = ""    # Filled in from PiGMi config data
-toaddr = ""      # Filled in from PiGMi config data
-
+fromaddr = ""    # Add email sender account here
+toaddr = ""          # Add email recipient here
 msg = MIMEMultipart()
 msg['From'] = fromaddr
 msg['To'] = toaddr
@@ -65,19 +66,19 @@ msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 
 
-#SMS message to customize. I added my external IP address.
-message = "A Garage Door has changed state! Check page, email or logfile for more information. "
+# Change message for your set up
+message = "Check page,( robboz4.no-ip.org:86/PiGMi ) email or logfile for more information."
 
+# Change for correct URL
 
 No_Email = True
 No_SMS = True
-
 io.setmode(io.BCM)
  
 
-door1_pin = 0    # Reed switch input. Must match the PiGMi pin numbers!!!
-door2_pin = 0    # Set up for my 3 garage doors
-door3_pin = 0    # Comment out for fewer doors.
+door1_pin = 00    # Reed switch input. Must match the PiGMi pin numbers!!!
+door2_pin = 00    # Set up for my 3 garage doors
+door3_pin = 00    # Comment out for fewer doors.
 door1_status_cur = 1
 door2_status_cur = 1
 door3_status_cur = 1
@@ -91,19 +92,30 @@ Door3 = "Closed"
 door_name1 = ""
 door_name2 = ""
 door_name3 = ""
+Door1_Present = False
+Door2_Present = False
+Door3_Present = False
+# BELOW ARE FILE LOCATIONS AND SERVIVE PROVIDERS YOU MAY NEED TO CHANGE FOR YOUR SETUP.
+# Set Config file default is /var/www/html/config/garage.xml
+config_file = "/var/www/PiGMi/config/garage.xml" 
 
+# Set Log file default is 
+log_file_path =  "http://localhost:86/PiGMi/logm.php?"  # Set correct pathp"
 
-
-
+# Modify line 241 if yu sue a different email server than gmail.
+# Modify liine 254 if using a different service to send sms.
 # Set up tick count and active/passive status
+
 Log_update_tick = 0
 Armed = False
 Armed_text = ""
 
 def Config():		# read Config data from XML file of PiGMi
+        
+        global config_file
 
 
-        tree = ET.parse("/var/www/html/config/garage.xml" )
+        tree = ET.parse(config_file )  # Set correct path
         root = tree.getroot()
         Door_list = [] # List of doors and pins.
 
@@ -121,12 +133,18 @@ def Config():		# read Config data from XML file of PiGMi
         global door2_name
         global door3_name
         global Alarm_text
+        global Armed
+        global Door1_Present
+        global Door2_Present
+        global Door3_Present
 
         MyLog("Reading Configuration.")
 
         for monitor in root.findall("monitor"):
                Alarm_text = monitor.find("monitor-state").text
                Alarm_message = "Monitor mode is:  " + Alarm_text
+               if Alarm_text== "Active":
+                      Armed = True
                MyLog(Alarm_message)
                
                email = monitor.find("monitor-email").text
@@ -179,9 +197,12 @@ def Config():		# read Config data from XML file of PiGMi
                for door in root.findall("door"):
                      doorname  = door.find("doorname").text
                      if doorname is None :
-                               doorname = "No door installed"
-                     PinR = door.find("gpio-pinR").text
-                     PinM = door.find("gpio-pinM").text
+                               doorname = "None"
+                               PinR = 0
+                               PinM = 0
+                     else:
+                               PinR = door.find("gpio-pinR").text
+                               PinM = door.find("gpio-pinM").text
 
 
                      Door_list.append(doorname)
@@ -189,15 +210,23 @@ def Config():		# read Config data from XML file of PiGMi
                      Door_list.append(PinM)
 # extract magnetic switch config. There are a maximum of 9 entries (0-8)
 # Door_name, relay_pin, magnet_pin. We need 3rd, 6th and 9th entired of the
-#list. Door_list[2],Door_list[5], Door_list [8]...
-        door1_pin = int(Door_list[2])
-        door1_name = Door_list[0]
+# list. Door_list[2],Door_list[5], Door_list [8]...
+        if Door_list[0] != "None":
+            Door1_Present = True
+            door1_pin = int(Door_list[2])
+            door1_name = Door_list[0]
 #        MyLog(door1_name)
-        door2_pin = int(Door_list[5])    
-        door2_name = Door_list[3]
-        door3_pin = int(Door_list[8])
-        door3_name = Door_list[6]    
-
+        
+        if Door_list[3] != "None":
+            Door2_Present = True
+            door2_pin = int(Door_list[5])    
+            door2_name = Door_list[3]
+        
+        if Door_list[6] !="None":
+            Door3_Present = True
+            door3_pin = int(Door_list[8])
+            door3_name = Door_list[6]    
+        
 # End of configuration for magnetic switch pins, email accounts and addresses and SMS.
 
 
@@ -216,14 +245,19 @@ def Mail_Message(Message, Method):      # Mail sender function
         lhs, rhs = fromaddr.split("@")
 #        print lhs, a_pass, fromaddr
         server.login(lhs, a_pass)
-        print Message
+#        print Message
+#        print Method
         body = Message
         msg.attach(MIMEText(body, 'plain'))
         text = msg.as_string()
         if Method == "sms":
-           toaddr = number + "@text.att.net"
-#           print toaddr
-        r = server.sendmail(fromaddr, toaddr, text)
+           toaddr = number + "@text.att.net"   # Set to correct provider
+
+           r = server.sendmail(fromaddr, toaddr, text)
+
+           
+        else:
+           r = server.sendmail(fromaddr, toaddr, text)
         server.close()
         return(r)
 
@@ -234,11 +268,11 @@ def Get_Mode():                  # Getting Mode setting
          global Armed
          global Armed_text
          cur_mode = Armed
-         
-         tree = ET.parse("/var/www/html/config/garage.xml" )
+         tree = ET.parse(config_file)          
+
          root = tree.getroot()
 
-#         MyLog(str(Armed))
+
          for monitor in root.findall("monitor"):
               Monitor_Mode = monitor.find("monitor-state").text
 #              Alarm_message = " Monitor mode is:  " + Monitor_Mode
@@ -264,12 +298,13 @@ def MyLog(logData):                       # New Logging  function
                                           # URL will need customizing for port number and web location
           log_args = { 'msg' : logData }
           encoded_args = urllib.urlencode(log_args)
-#          log_args = { 'pri' : 0 }
-#          encoded_args = urllib.urlencode(log_args)
-          url = "http://localhost/logm.php?" + encoded_args
+
+
+          url = log_file_path + encoded_args  # Set correct path
+
 
           url_junk = urllib.urlopen(url)
-#          print url_junk
+
 
 # End of My_Log() function
         
@@ -293,15 +328,22 @@ def Door_Status():                       # Get Door status routine,
                 global door1_name
                 global door2_name
                 global door3_name
+                global Door1_Present
+                global Door2_Present
+                global Door3_Present
            
-                door1_status_cur = io.input(door1_pin)
-		print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
+                if Door1_Present == True:
+                   door1_status_cur = io.input(door1_pin)
+		   print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
 #               print("Door 1 cur = " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
-                door2_status_cur = io.input(door2_pin)
-                print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
-		door3_status_cur = io.input(door3_pin)
-		print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
-		if door1_status_cur != door1_status_old:
+                if Door2_Present == True:
+                   door2_status_cur = io.input(door2_pin)
+                   print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
+		if Door3_Present == True:
+                   door3_status_cur = io.input(door3_pin)
+		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
+		if Door1_Present == True:
+                   if door1_status_cur != door1_status_old:
 			
 			door1_status_old = door1_status_cur
 
@@ -309,8 +351,8 @@ def Door_Status():                       # Get Door status routine,
                         msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
-			
-		if door2_status_cur != door2_status_old:
+		if Door2_Present == True:	
+		  if door2_status_cur != door2_status_old:
 			
                         print("Alarm Door 2 cur = " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
 			door2_status_old = door2_status_cur
@@ -319,11 +361,11 @@ def Door_Status():                       # Get Door status routine,
                         MyLog(body)
                         return(True)
 
-			
-		if door3_status_cur != door3_status_old:
+		if Door3_Present == True:	
+		  if door3_status_cur != door3_status_old:
 			
 			door3_status_old = door3_status_cur
-                        body = door3_name + "is active. "
+                        body = door3_name + " is active. "
                         msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
@@ -332,46 +374,51 @@ def Door_Status():                       # Get Door status routine,
 # End of Door_Status() function			
 			
 # Initial set up
-Get_Mode()
+# Get_Mode()
 HeaderText = "Monitor  started." 
 MyLog(HeaderText)
 Config()
 
-io.setup(door1_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-io.setup(door2_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-io.setup(door3_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
-door1_status_old = io.input(door1_pin)
-door2_status_old = io.input(door2_pin)
-door3_status_old = io.input(door3_pin)
+if Door1_Present == True:
+	io.setup(door1_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+        door1_status_old = io.input(door1_pin)
+if Door2_Present == True:
+        io.setup(door2_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+        door2_status_old = io.input(door2_pin)
+if Door3_Present == True:
+        io.setup(door3_pin, io.IN, pull_up_down=io.PUD_UP)  # activate input with PullUp
+        door3_status_old = io.input(door3_pin)
 
 
 
 # MyLog(Armed_text)
 
-if (io.input(door1_pin) == 1):
+if Door1_Present == True:
+   if (io.input(door1_pin) == 1):
 	Door1 = "Open"
         Initial_state = door1_name + " "  + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
-else:	
+   else:	
         Initial_state = door1_name +" " + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
 
-if (io.input(door2_pin) == 1):
+if Door2_Present == True:
+   if (io.input(door2_pin) == 1):
         Door2 = "Open"
         Initial_state = door2_name + " " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
 
-else:
+   else:
         Initial_state = door2_name +" " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
-
-if (io.input(door3_pin) == 1):
+if Door3_Present == True:
+   if (io.input(door3_pin) == 1):
         Door3 = "Open"
         Initial_state = door3_name + " " + Door3 + " Monitoring Pin: " + str(door3_pin)
         MyLog(Initial_state)
 
-else:
-        Initial_state = door3_name + " " + Door3 + + " Monitoring Pin: " + str(door2_pin)
+   else:
+        Initial_state = door3_name + " " + Door3  + " Monitoring Pin: " + str(door3_pin)
         MyLog(Initial_state)
 
 
@@ -412,7 +459,7 @@ while True:
     else:
 
         if Log_update_tick > 59:
-            MyLog("No Status Change in 60 minutes. " + Armed_text) # <- need to add the door state for log
+            MyLog("No Status Change in 60 minutes. " + Armed_text) 
             Log_update_tick = 0
 
         Door_alarm = False 
