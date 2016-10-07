@@ -38,6 +38,8 @@
 # config file, so no extra file is needed. Also streamlined door*_name for ease of reporting.
 # Tested on a Pi Zero that did not have any hardware connected to the GPIO pins. 9/26/16
 # Made cleaner variables for config changes 2/10/16
+# Fixed email/sms bug 5/10/16
+
 import requests
 import time
 import RPi.GPIO as io
@@ -70,7 +72,7 @@ a_pass = ""                         # Need pass code for login account
 message = "Check page,( robboz4.no-ip.org:86/PiGMi ) email or logfile for more information."
 
 # Change for correct URL
-
+No_Email_Rep = True
 No_Email = True
 No_SMS = True
 io.setmode(io.BCM)
@@ -97,10 +99,10 @@ Door2_Present = False
 Door3_Present = False
 # BELOW ARE FILE LOCATIONS AND SERVIVE PROVIDERS YOU MAY NEED TO CHANGE FOR YOUR SETUP.
 # Set Config file default is /var/www/html/config/garage.xml
-config_file = "/var/www/PiGMi/config/garage.xml" 
+config_file = "/var/www/html/config/garage.xml" 
 
 # Set Log file default is 
-log_file_path =  "http://localhost:86/PiGMi/logm.php?"  # Set correct pathp"
+log_file_path =  "http://localhost/logm.php?"  # Set correct pathp"
 
 # Modify line 241 if yu sue a different email server than gmail.
 # Modify liine 254 if using a different service to send sms.
@@ -128,6 +130,7 @@ def Config():		# read Config data from XML file of PiGMi
         global door2_pin
         global door3_pin
         global No_Email
+        global No_Email_Rep
         global No_SMS
         global door1_name
         global door2_name
@@ -151,12 +154,12 @@ def Config():		# read Config data from XML file of PiGMi
                if email is None:
                      email = ""
                      MyLog("No recipient Email Address configured.")
-                     No_Email = True
+                     No_Email_Rep = True
                else:
                      toaddr = email
                      account_info = "Sending email to " + toaddr
                      MyLog(account_info)
-                     No_Email = False
+                     No_Email_Rep = False
 
                sms = monitor.find("monitor-sms").text
                if sms is None:
@@ -435,12 +438,14 @@ while True:
         print("Alarm True")
         if Armed == True:
             if No_Email == False:
-               method = "email"
-               print("DOOR ALARM! Sending email alert")
-               text = " Alarm at " + time.asctime( time.localtime(time.time()) ) + "..."
-               r = Mail_Message(text, method)
-               MyLog("Monitor sending email: Status below.")
-               MyLog(r)
+                 if No_Email_Rep == False:
+                    method = "email"
+                    print("DOOR ALARM! Sending email alert")
+                    text = " Alarm at " + time.asctime( time.localtime(time.time()) ) + "..."
+
+                    r = Mail_Message(text, method)
+                    MyLog("Monitor sending email: Status below.")
+                    MyLog(r)
                
             else:
                MyLog("Email not configured, cannot send message.")
