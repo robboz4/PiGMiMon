@@ -12,4 +12,4 @@ You can customize the email or sms message. For example in the sms message I add
 simply click on the link and open up the main page.
 
 It should be set up to run on boot up. There are instructions on the main
-Raspberry Pi pages on how to do this. It is recommended to use the system service method, so it runs after Apache and PHP have been launced.
+Raspberry Pi pages on how to do this. It is recommended to use the system service method, so it runs after Apache and PHP have been launched.
