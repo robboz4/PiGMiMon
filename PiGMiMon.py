@@ -39,6 +39,10 @@
 # Tested on a Pi Zero that did not have any hardware connected to the GPIO pins. 9/26/16
 # Made cleaner variables for config changes 2/10/16
 # Fixed email/sms bug 5/10/16
+# Stopped adding every door operation to the email text. Text should be added only when armed.
+# Also added Version string that gets logged on start up
+# 12/5/16
+
 
 import requests
 import time
@@ -50,7 +54,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-
+Version = "1.0.2"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -97,12 +101,12 @@ door_name3 = ""
 Door1_Present = False
 Door2_Present = False
 Door3_Present = False
-# BELOW ARE FILE LOCATIONS AND SERVIVE PROVIDERS YOU MAY NEED TO CHANGE FOR YOUR SETUP.
+# BELOW ARE FILE LOCATIONS AND SERVICE PROVIDERS YOU MAY NEED TO CHANGE FOR YOUR SETUP.
 # Set Config file default is /var/www/html/config/garage.xml
-config_file = "/var/www/html/config/garage.xml" 
+config_file = "/var/www/PiGMi/config/garage.xml" 
 
 # Set Log file default is 
-log_file_path =  "http://localhost/logm.php?"  # Set correct pathp"
+log_file_path =  "http://localhost:86/PiGMi/logm.php?"  # Set correct pathp"
 
 # Modify line 241 if yu sue a different email server than gmail.
 # Modify liine 254 if using a different service to send sms.
@@ -211,8 +215,8 @@ def Config():		# read Config data from XML file of PiGMi
                      Door_list.append(doorname)
                      Door_list.append(PinR)
                      Door_list.append(PinM)
-# extract magnetic switch config. There are a maximum of 9 entries (0-8)
-# Door_name, relay_pin, magnet_pin. We need 3rd, 6th and 9th entired of the
+# Extract magnetic switch config. There are a maximum of 9 entries (0-8)
+# Door_name, relay_pin, magnet_pin. We need 3rd, 6th and 9th entries of the
 # list. Door_list[2],Door_list[5], Door_list [8]...
         if Door_list[0] != "None":
             Door1_Present = True
@@ -320,7 +324,7 @@ def MyLog(logData):                       # New Logging  function
 def Door_Status():                       # Get Door status routine, 
                                          # reads IO pins and sets the status.
 
-                # global Door_alarm
+                global Armed
                 global body
                 global door1_status_cur
                 global door2_status_cur 
@@ -346,30 +350,28 @@ def Door_Status():                       # Get Door status routine,
                    door3_status_cur = io.input(door3_pin)
 		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
 		if Door1_Present == True:
-                   if door1_status_cur != door1_status_old:
-			
+                    if door1_status_cur != door1_status_old:			
 			door1_status_old = door1_status_cur
-
-                        body = door1_name + " is active. "
-                        msg.attach(MIMEText(body, 'plain'))
+                        if Armed == True:
+                           body = door1_name + " is active. "
+                           msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
 		if Door2_Present == True:	
-		  if door2_status_cur != door2_status_old:
-			
-                        print("Alarm Door 2 cur = " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
+		    if door2_status_cur != door2_status_old:
 			door2_status_old = door2_status_cur
-                        body = door2_name + " is active. " 
-                        msg.attach(MIMEText(body, 'plain'))
+                        if Armed == True:
+                           body = door2_name + " is active. " 
+                           msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
                         return(True)
 
-		if Door3_Present == True:	
-		  if door3_status_cur != door3_status_old:
-			
+	        if Door3_Present == True:	
+		    if door3_status_cur != door3_status_old:
 			door3_status_old = door3_status_cur
-                        body = door3_name + " is active. "
-                        msg.attach(MIMEText(body, 'plain'))
+                        if Armed == True:
+                           body = door3_name + " is active. "
+                           msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
 			return(True)
 		return(False)	
@@ -378,7 +380,7 @@ def Door_Status():                       # Get Door status routine,
 			
 # Initial set up
 # Get_Mode()
-HeaderText = "Monitor  started." 
+HeaderText = "Monitor  Version "  + Version + " started."
 MyLog(HeaderText)
 Config()
 
