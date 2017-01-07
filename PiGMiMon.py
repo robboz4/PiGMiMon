@@ -42,7 +42,7 @@
 # Stopped adding every door operation to the email text. Text should be added only when armed.
 # Also added Version string that gets logged on start up
 # 12/5/16
-
+# 1/7/17 Testing email messages - added a 'b' to the version string for testing tracking.
 
 import requests
 import time
@@ -54,7 +54,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-Version = "1.0.2"
+Version = "1.0.2b"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -67,13 +67,13 @@ msg['From'] = fromaddr
 msg['To'] = toaddr
 msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 
-body = "Garage Door Alarm!   "       # This is over written
-msg.attach(MIMEText(body, 'plain'))
+#body = "Garage Door Alarm!   "       # This is over written
+#msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 
 
 # Change message for your set up
-message = "Check page,( robboz4.no-ip.org:86/PiGMi ) email or logfile for more information."
+message = " Check page,( robboz4.no-ip.org:86/PiGMi ) email or logfile for more information."
 
 # Change for correct URL
 No_Email_Rep = True
@@ -244,6 +244,7 @@ def Mail_Message(Message, Method):      # Mail sender function
         global a_pass
         global toaddr
         global number
+        global body   # Simplifying email
 
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.ehlo()
@@ -254,18 +255,22 @@ def Mail_Message(Message, Method):      # Mail sender function
         server.login(lhs, a_pass)
 #        print Message
 #        print Method
-        body = Message
-        msg.attach(MIMEText(body, 'plain'))
-        text = msg.as_string()
+        body += ":::  "
+        body += Message
+#        msg.attach(MIMEText(body, 'plain'))
+#        text = msg.as_string()
         if Method == "sms":
+           msg.attach(MIMEText(Message, 'plain'))
+           text = msg.as_string()
            toaddr = number + "@text.att.net"   # Set to correct provider
-
+#           print(" Message to be sent = " + Message)
            r = server.sendmail(fromaddr, toaddr, text)
 
            
         else:
-           r = server.sendmail(fromaddr, toaddr, text)
+           r = server.sendmail(fromaddr, toaddr, body)
         server.close()
+        body = "" # Reset message text.
         return(r)
 
 # End of Mail_Message() function
