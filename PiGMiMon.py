@@ -67,7 +67,7 @@ msg['From'] = fromaddr
 msg['To'] = toaddr
 msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 
-#body = "Garage Door Alarm!   "       # This is over written
+body = "Garage Door Alarm!   "       # This is over written
 #msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 
