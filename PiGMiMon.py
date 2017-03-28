@@ -43,7 +43,7 @@
 # Also added Version string that gets logged on start up
 # 12/5/16
 # 1/7/17 Testing email messages - added a 'b' to the version string for testing tracking.
-
+# 3/26/17 Testing on new Pi OS added 'c' to revsiion number.
 import requests
 import time
 import RPi.GPIO as io
@@ -54,7 +54,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-Version = "1.0.2b"
+Version = "1.0.2c"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -70,10 +70,10 @@ msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 body = "Garage Door Alarm!   "       # This is over written
 #msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
-
+body = ""
 
 # Change message for your set up
-message = " Check page,( robboz4.no-ip.org:86/PiGMi ) email or logfile for more information."
+message = " Check page,( robboz4.no-ip.org:86/home.php ) email or logfile for more information."
 
 # Change for correct URL
 No_Email_Rep = True
@@ -103,10 +103,10 @@ Door2_Present = False
 Door3_Present = False
 # BELOW ARE FILE LOCATIONS AND SERVICE PROVIDERS YOU MAY NEED TO CHANGE FOR YOUR SETUP.
 # Set Config file default is /var/www/html/config/garage.xml
-config_file = "/var/www/PiGMi/config/garage.xml" 
+config_file = "/var/www/html/config/garage.xml" 
 
 # Set Log file default is 
-log_file_path =  "http://localhost:86/PiGMi/logm.php?"  # Set correct pathp"
+log_file_path =  "http://localhost:86/logm.php?"  # Set correct pathp"
 
 # Modify line 241 if yu sue a different email server than gmail.
 # Modify liine 254 if using a different service to send sms.
@@ -346,14 +346,14 @@ def Door_Status():                       # Get Door status routine,
            
                 if Door1_Present == True:
                    door1_status_cur = io.input(door1_pin)
-		   print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
+#		   print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
 #               print("Door 1 cur = " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
                 if Door2_Present == True:
                    door2_status_cur = io.input(door2_pin)
-                   print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
+#                   print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
 		if Door3_Present == True:
                    door3_status_cur = io.input(door3_pin)
-		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
+#		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
 		if Door1_Present == True:
                     if door1_status_cur != door1_status_old:			
 			door1_status_old = door1_status_cur
@@ -460,6 +460,7 @@ while True:
                if No_Email == False:
                   method = "sms"
                   r = Mail_Message(message, method)
+                  print("Sending SMS")
                   MyLog("Monitor is sending SMS: Status below.")
                   MyLog(r)
             else:
@@ -471,15 +472,16 @@ while True:
     else:
 
         if Log_update_tick > 59:
-            MyLog("No Status Change in 60 minutes. " + Armed_text) 
+            MyLog("No Status Change in 60 minutes. " + Armed_text)
+            print("No Status Change in 60 Minutes.") 
             Log_update_tick = 0
 
         Door_alarm = False 
         Log_update_tick += 1
-        print("Log tick = " + str(Log_update_tick) + "\n")
+ #       print("Log tick = " + str(Log_update_tick) + "\n")
 
     time.sleep(60)
 
-    print("ending timing loop  "+ str(Door_alarm) +"\n")
+#    print("ending timing loop  "+ str(Door_alarm) +"\n")
     Door_alarm= False
 # End of while loop
