@@ -44,6 +44,8 @@
 # 12/5/16
 # 1/7/17 Testing email messages - added a 'b' to the version string for testing tracking.
 # 3/26/17 Testing on new Pi OS added 'c' to revsiion number.
+# 4/26/17 Final testing fixed email issue. bumped revision number and removed letter.
+
 import requests
 import time
 import RPi.GPIO as io
@@ -54,7 +56,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-Version = "1.0.2c"
+Version = "1.0.3"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -67,7 +69,7 @@ msg['From'] = fromaddr
 msg['To'] = toaddr
 msg['Subject'] = "PiGMi Alarm"      # Customize Subject here
 
-body = "Garage Door Alarm!   "       # This is over written
+#body = "Garage Door Alarm!   "       # This is over written
 #msg.attach(MIMEText(body, 'plain'))
 a_pass = ""                         # Need pass code for login account
 body = ""
@@ -268,7 +270,9 @@ def Mail_Message(Message, Method):      # Mail sender function
 
            
         else:
-           r = server.sendmail(fromaddr, toaddr, body)
+           msg.attach(MIMEText(Message, 'plain'))
+           text = msg.as_string()
+           r = server.sendmail(fromaddr, toaddr, text)
         server.close()
         body = "" # Reset message text.
         return(r)
