@@ -45,6 +45,8 @@
 # 1/7/17 Testing email messages - added a 'b' to the version string for testing tracking.
 # 3/26/17 Testing on new Pi OS added 'c' to revsiion number.
 # 4/26/17 Final testing fixed email issue. bumped revision number and removed letter.
+# 7/21/17 Fixing hour loop count. Starting on hour boundaries. version suffix a
+# 7/22/17 made a function for offset value suffix b
 
 import requests
 import time
@@ -56,7 +58,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-Version = "1.0.3"
+Version = "1.0.3b"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -117,6 +119,14 @@ log_file_path =  "http://localhost:86/logm.php?"  # Set correct pathp"
 Log_update_tick = 0
 Armed = False
 Armed_text = ""
+
+#Offset function
+alarm_offset = 0
+def offset():
+        d = datetime.datetime.now()
+        min_offset = getattr(d, "minute")
+#       print str(min_offset)
+        return(min_offset)
 
 def Config():		# read Config data from XML file of PiGMi
         
@@ -389,7 +399,7 @@ def Door_Status():                       # Get Door status routine,
 			
 # Initial set up
 # Get_Mode()
-HeaderText = "Monitor  Version "  + Version + " started."
+HeaderText = "Monitor  Version "  + Version + " started with hour offset= " + str(Log_update_tick)
 MyLog(HeaderText)
 Config()
 
@@ -472,16 +482,20 @@ while True:
         else:
             MyLog("In Passive mode no message sent.")
         Door_alarm = False
-        Log_update_tick = 0
+#        Log_update_tick = 0
     else:
 
         if Log_update_tick > 59:
-            MyLog("No Status Change in 60 minutes. " + Armed_text)
-            print("No Status Change in 60 Minutes.") 
-            Log_update_tick = 0
+            if alarm_offset > 0:
+               MyLog("Hourly Chime with door activity " + str(60-alarm_offset) + " minutes ago. " + Armed_text)
+               print("Hourly  Chime after activity.")
+               alarm_offset = 0
+            else:
+               MyLog("Hourly chime no activity.")
+            Log_update_tick = offset()
 
         Door_alarm = False 
-        Log_update_tick += 1
+    Log_update_tick += 1
  #       print("Log tick = " + str(Log_update_tick) + "\n")
 
     time.sleep(60)
