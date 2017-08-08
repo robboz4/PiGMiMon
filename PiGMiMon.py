@@ -49,6 +49,7 @@
 # 7/22/17 made a function for offset value suffix b
 
 import requests
+import datetime
 import time
 import RPi.GPIO as io
 import os
