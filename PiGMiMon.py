@@ -47,6 +47,7 @@
 # 4/26/17 Final testing fixed email issue. bumped revision number and removed letter.
 # 7/21/17 Fixing hour loop count. Starting on hour boundaries. version suffix a
 # 7/22/17 made a function for offset value suffix b
+# 9/28/17 Added the last active door to the hourly report. Now 1.0.3c
 
 import requests
 import datetime
@@ -59,7 +60,7 @@ import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
 
 # End of Imports
-Version = "1.0.3b"
+Version = "1.0.3c"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -103,6 +104,7 @@ Door3 = "Closed"
 door_name1 = ""
 door_name2 = ""
 door_name3 = ""
+Door_Active = ""
 Door1_Present = False
 Door2_Present = False
 Door3_Present = False
@@ -358,6 +360,7 @@ def Door_Status():                       # Get Door status routine,
                 global Door1_Present
                 global Door2_Present
                 global Door3_Present
+                global Door_Active
            
                 if Door1_Present == True:
                    door1_status_cur = io.input(door1_pin)
@@ -376,6 +379,7 @@ def Door_Status():                       # Get Door status routine,
                            body = door1_name + " is active. "
                            msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
+                        Door_Active = door1_name
 			return(True)
 		if Door2_Present == True:	
 		    if door2_status_cur != door2_status_old:
@@ -384,6 +388,7 @@ def Door_Status():                       # Get Door status routine,
                            body = door2_name + " is active. " 
                            msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
+                        Door_Active = door2_name
                         return(True)
 
 	        if Door3_Present == True:	
@@ -393,6 +398,7 @@ def Door_Status():                       # Get Door status routine,
                            body = door3_name + " is active. "
                            msg.attach(MIMEText(body, 'plain'))
                         MyLog(body)
+                        Door_Active = door3_name
 			return(True)
 		return(False)	
 			
@@ -488,7 +494,7 @@ while True:
 
         if Log_update_tick > 59:
             if alarm_offset > 0:
-               MyLog("Hourly Chime with door activity " + str(60-alarm_offset) + " minutes ago. " + Armed_text)
+               MyLog("Hourly Chime with " + Door_Active + "active " + str(60-alarm_offset) + " minutes ago. " + Armed_text)
                print("Hourly  Chime after activity.")
                alarm_offset = 0
             else:
