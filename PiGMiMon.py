@@ -43,14 +43,16 @@
 # Also added Version string that gets logged on start up
 # 12/5/16
 # 1/7/17 Testing email messages - added a 'b' to the version string for testing tracking.
-# 3/26/17 Testing on new Pi OS added 'c' to revsiion number.
+# 3/26/17 Testing on new Pi OS added 'c' to revision number.
 # 4/26/17 Final testing fixed email issue. bumped revision number and removed letter.
 # 7/21/17 Fixing hour loop count. Starting on hour boundaries. version suffix a
 # 7/22/17 made a function for offset value suffix b
-# 9/28/17 Added the last active door to the hourly report. Now 1.0.3c
+# 3/14/18 Added HBHack function to copy status to the three status files that link to Homebridge.
+# Now the manual opening/closing of the door via the buttons inthe garage gets refected in all programs.
+# Bumping version 1.0.4  and checking into github. Will add note that these files, status0, status1 and status2,
+# need to be added manually until I work on full integration of Homebridge with MyGarage.
 
 import requests
-import datetime
 import time
 import RPi.GPIO as io
 import os
@@ -58,9 +60,11 @@ import sys
 import smtplib                       # Email  
 import urllib                        # Email sending
 import xml.etree.ElementTree as ET   # For xml parsing
+import datetime
+
 
 # End of Imports
-Version = "1.0.3c"
+Version = "1.0.4"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -115,21 +119,31 @@ config_file = "/var/www/html/config/garage.xml"
 # Set Log file default is 
 log_file_path =  "http://localhost:86/logm.php?"  # Set correct pathp"
 
-# Modify line 241 if yu sue a different email server than gmail.
+# Modify line 241 if you use a different email server than gmail.
 # Modify liine 254 if using a different service to send sms.
 # Set up tick count and active/passive status
 
+#Setting up hourly chime counter
+#d = datetime.datetime.now()
+#min_offset = getattr(d, "minute")
 Log_update_tick = 0
+
+
 Armed = False
 Armed_text = ""
 
 #Offset function
 alarm_offset = 0
 def offset():
-        d = datetime.datetime.now()
-        min_offset = getattr(d, "minute")
-#       print str(min_offset)
-        return(min_offset)
+	d = datetime.datetime.now()
+	min_offset = getattr(d, "minute")
+#	print str(min_offset)
+	return(min_offset)
+
+
+
+
+# end of offset
 
 def Config():		# read Config data from XML file of PiGMi
         
@@ -361,16 +375,19 @@ def Door_Status():                       # Get Door status routine,
                 global Door2_Present
                 global Door3_Present
                 global Door_Active
-           
+                
                 if Door1_Present == True:
                    door1_status_cur = io.input(door1_pin)
+                   HBHack(0,door1_status_cur)
 #		   print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
 #               print("Door 1 cur = " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
                 if Door2_Present == True:
                    door2_status_cur = io.input(door2_pin)
+                   HBHack(1,door2_status_cur)
 #                   print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
 		if Door3_Present == True:
                    door3_status_cur = io.input(door3_pin)
+                   HBHack(2,door3_status_cur)
 #		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
 		if Door1_Present == True:
                     if door1_status_cur != door1_status_old:			
@@ -402,10 +419,55 @@ def Door_Status():                       # Get Door status routine,
 			return(True)
 		return(False)	
 			
-# End of Door_Status() function			
+# End of Door_Status() function	
+
+
+# Hack to keep MyGarage and Homebridge in sync
+
+
+def HBHack(doornum,state):
+
+
+		if doornum == 0:
+
+                   fh=open("/var/www/html/status0","w")
+                   if state == 1:
+			fh.write("open")
+ 			fh.close()
+		   if state == 0:
+			fh.write("closed")
+			fh.close()
+
+
+
+
+		if doornum == 1:
+
+                   fh=open("/var/www/html/status1","w")
+                   if state == 1:
+                        fh.write("open")
+                        fh.close()
+                   if state == 0:
+                        fh.write("closed")
+                        fh.close()
+
+		if doornum == 2:
+
+                   fh=open("/var/www/html/status2","w")
+                   if state == 1:
+                        fh.write("open")
+                        fh.close()
+                   if state == 0:
+                        fh.write("closed")
+                        fh.close()
+
+
+# End of hack        		
 			
 # Initial set up
 # Get_Mode()
+Log_update_tick=offset()
+
 HeaderText = "Monitor  Version "  + Version + " started with hour offset= " + str(Log_update_tick)
 MyLog(HeaderText)
 Config()
@@ -464,6 +526,7 @@ while True:
     Door_alarm = Door_Status()       # Get Door status
     if Door_alarm == True:
         print("Alarm True")
+        alarm_offset=offset()
         if Armed == True:
             if No_Email == False:
                  if No_Email_Rep == False:
@@ -489,16 +552,16 @@ while True:
         else:
             MyLog("In Passive mode no message sent.")
         Door_alarm = False
-#        Log_update_tick = 0
+ #       Log_update_tick = 0
     else:
 
         if Log_update_tick > 59:
             if alarm_offset > 0:
-               MyLog("Hourly Chime with " + Door_Active + "active " + str(60-alarm_offset) + " minutes ago. " + Armed_text)
+               MyLog("Hourly Chime with " + Door_Active + " active " + str(60-alarm_offset) + " minutes ago. " + Armed_text)
                print("Hourly  Chime after activity.")
                alarm_offset = 0
             else:
-               MyLog("Hourly chime no activity.")
+               MyLog("Hourly chime no activity.") 
             Log_update_tick = offset()
 
         Door_alarm = False 
