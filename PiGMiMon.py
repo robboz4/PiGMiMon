@@ -51,6 +51,8 @@
 # Now the manual opening/closing of the door via the buttons inthe garage gets refected in all programs.
 # Bumping version 1.0.4  and checking into github. Will add note that these files, status0, status1 and status2,
 # need to be added manually until I work on full integration of Homebridge with MyGarage.
+# 3/18/18 Changed updating status files to every time  a door state has changed instead of every minute.
+# Bumped to 1.0.5
 
 import requests
 import time
@@ -64,7 +66,7 @@ import datetime
 
 
 # End of Imports
-Version = "1.0.4"
+Version = "1.0.5"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -360,64 +362,66 @@ def MyLog(logData):                       # New Logging  function
 def Door_Status():                       # Get Door status routine, 
                                          # reads IO pins and sets the status.
 
-                global Armed
-                global body
-                global door1_status_cur
-                global door2_status_cur 
-                global door3_status_cur
-                global door1_status_old
-                global door2_status_old
-                global door3_status_old
-                global door1_name
-                global door2_name
-                global door3_name
-                global Door1_Present
-                global Door2_Present
-                global Door3_Present
-                global Door_Active
+	global Armed
+	global body
+	global door1_status_cur
+	global door2_status_cur 
+	global door3_status_cur
+	global door1_status_old
+	global door2_status_old
+	global door3_status_old
+	global door1_name
+	global door2_name
+	global door3_name
+	global Door1_Present
+	global Door2_Present
+	global Door3_Present
+	global Door_Active
                 
-                if Door1_Present == True:
-                   door1_status_cur = io.input(door1_pin)
-                   HBHack(0,door1_status_cur)
-#		   print(door1_name + " " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
-#               print("Door 1 cur = " + str(door1_status_cur) + "; old = " + str(door1_status_old) + "\n")
-                if Door2_Present == True:
-                   door2_status_cur = io.input(door2_pin)
-                   HBHack(1,door2_status_cur)
-#                   print(door2_name + " " + str(door2_status_cur) + "; old = "  + str(door2_status_old) + "\n")
-		if Door3_Present == True:
-                   door3_status_cur = io.input(door3_pin)
-                   HBHack(2,door3_status_cur)
-#		   print(door3_name + " " + str(door3_status_cur) + "; old = " + str(door3_status_old) + "\n")
-		if Door1_Present == True:
-                    if door1_status_cur != door1_status_old:			
-			door1_status_old = door1_status_cur
-                        if Armed == True:
-                           body = door1_name + " is active. "
-                           msg.attach(MIMEText(body, 'plain'))
-                        MyLog(body)
-                        Door_Active = door1_name
-			return(True)
-		if Door2_Present == True:	
-		    if door2_status_cur != door2_status_old:
-			door2_status_old = door2_status_cur
-                        if Armed == True:
-                           body = door2_name + " is active. " 
-                           msg.attach(MIMEText(body, 'plain'))
-                        MyLog(body)
-                        Door_Active = door2_name
-                        return(True)
+	if Door1_Present == True:
+		door1_status_cur = io.input(door1_pin)
+                   
 
-	        if Door3_Present == True:	
-		    if door3_status_cur != door3_status_old:
-			door3_status_old = door3_status_cur
-                        if Armed == True:
-                           body = door3_name + " is active. "
-                           msg.attach(MIMEText(body, 'plain'))
-                        MyLog(body)
-                        Door_Active = door3_name
+	if Door2_Present == True:
+		door2_status_cur = io.input(door2_pin)
+                	
+	if Door3_Present == True:
+		door3_status_cur = io.input(door3_pin)
+                
+	if Door1_Present == True:
+		if door1_status_cur != door1_status_old:			
+			door1_status_old = door1_status_cur
+			HBHack(0,door1_status_cur)
+			if Armed == True:
+				body = door1_name + " is active. "
+				msg.attach(MIMEText(body, 'plain'))
+				MyLog(body)
+			Door_Active = door1_name
 			return(True)
-		return(False)	
+
+	if Door2_Present == True:
+		if door2_status_cur != door2_status_old:
+			door2_status_old = door2_status_cur
+			HBHack(1,door2_status_cur)
+			if Armed == True:
+				body = door2_name + " is active. " 
+				msg.attach(MIMEText(body, 'plain'))
+				MyLog(body)
+			Door_Active = door2_name
+			return(True)
+
+	if Door3_Present == True:	
+		if door3_status_cur != door3_status_old:
+			door3_status_old = door3_status_cur
+			HBHack(2,door3_status_cur)
+			if Armed == True:
+				body = door3_name + " is active. "
+				msg.attach(MIMEText(body, 'plain'))
+				MyLog(body)
+			Door_Active = door3_name
+			return(True)
+				
+	return(False)	
 			
 # End of Door_Status() function	
 
@@ -491,28 +495,34 @@ if Door1_Present == True:
 	Door1 = "Open"
         Initial_state = door1_name + " "  + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
+        HBHack(0,1)
    else:	
         Initial_state = door1_name +" " + Door1 + " Monitoring Pin: " + str(door1_pin)
         MyLog(Initial_state)
+        HBHack(0,0)
 
 if Door2_Present == True:
    if (io.input(door2_pin) == 1):
         Door2 = "Open"
         Initial_state = door2_name + " " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
+        HBHack(1,1)
 
    else:
         Initial_state = door2_name +" " + Door2 + " Monitoring Pin: " + str(door2_pin)
         MyLog(Initial_state)
+        HBHack(1,0)
 if Door3_Present == True:
    if (io.input(door3_pin) == 1):
         Door3 = "Open"
         Initial_state = door3_name + " " + Door3 + " Monitoring Pin: " + str(door3_pin)
         MyLog(Initial_state)
+        HBHack(2,1)
 
    else:
         Initial_state = door3_name + " " + Door3  + " Monitoring Pin: " + str(door3_pin)
         MyLog(Initial_state)
+        HBHack(2,0)
 
 
 Door_alarm = Door_Status() 
