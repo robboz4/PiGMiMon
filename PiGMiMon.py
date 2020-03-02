@@ -53,6 +53,8 @@
 # need to be added manually until I work on full integration of Homebridge with MyGarage.
 # 3/18/18 Changed updating status files to every time  a door state has changed instead of every minute.
 # Bumped to 1.0.5
+# Took out web site and sms info. Needs to be provided for your needs
+# 3/2/2020 Bumped to 1.0.6 for Instructables entery.
 
 import requests
 import time
@@ -66,7 +68,7 @@ import datetime
 
 
 # End of Imports
-Version = "1.0.5"
+Version = "1.0.6"
 #Set up email & sms
 
 from email.MIMEMultipart import MIMEMultipart
@@ -85,7 +87,7 @@ a_pass = ""                         # Need pass code for login account
 body = ""
 
 # Change message for your set up
-message = " Check page,( robboz4.no-ip.org:86/home.php ) email or logfile for more information."
+message = " Check page,( YOUR WEB PAGE LINK HERE ) email or logfile for more information."
 
 # Change for correct URL
 No_Email_Rep = True
@@ -119,7 +121,7 @@ Door3_Present = False
 config_file = "/var/www/html/config/garage.xml" 
 
 # Set Log file default is 
-log_file_path =  "http://localhost:86/logm.php?"  # Set correct pathp"
+log_file_path =  "http://localhost/logm.php?"  # Set correct path ADd port number if not default"
 
 # Modify line 241 if you use a different email server than gmail.
 # Modify liine 254 if using a different service to send sms.
@@ -293,7 +295,8 @@ def Mail_Message(Message, Method):      # Mail sender function
         if Method == "sms":
            msg.attach(MIMEText(Message, 'plain'))
            text = msg.as_string()
-           toaddr = number + "@text.att.net"   # Set to correct provider
+# Modify line below for your cell carrier eg @text.att.net for AT&T 
+           toaddr = number + "@your.cell.provider"   # Set to correct provider
 #           print(" Message to be sent = " + Message)
            r = server.sendmail(fromaddr, toaddr, text)
 
