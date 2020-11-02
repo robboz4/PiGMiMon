@@ -55,7 +55,7 @@
 # Bumped to 1.0.5
 # Took out web site and sms info. Needs to be provided for your needs
 # 3/2/2020 Bumped to 1.0.6 for Instructables entery.
-
+# 
 import requests
 import time
 import RPi.GPIO as io
